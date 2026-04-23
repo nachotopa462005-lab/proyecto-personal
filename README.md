@@ -4,7 +4,7 @@ App para gestionar finanzas personales: entender en qué se gasta, visualizar es
 
 ## Tablero
 
-- **Link**: `PENDIENTE: pega acá el link a tu tablero (Trello/Jira/GitHub Projects/Notion/etc.)`
+- **Link**: `https://trello.com/b/a78tyz64/gestor-de-gastos`
 
 ## Estructura del repo
 
