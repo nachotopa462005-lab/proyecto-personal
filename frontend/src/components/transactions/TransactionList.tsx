@@ -1,4 +1,6 @@
 import type { Category, Transaction } from '../../types/finance'
+import { Button } from '../ui/Button'
+import { EmptyState } from '../ui/EmptyState'
 import { TransactionCard } from './TransactionCard'
 
 export type TransactionListProps = {
@@ -6,6 +8,7 @@ export type TransactionListProps = {
   categoriesById: Record<string, Category>
   onEdit?: (transaction: Transaction) => void
   onDelete?: (transaction: Transaction) => void
+  onCreate?: () => void
 }
 
 export function TransactionList({
@@ -13,12 +16,21 @@ export function TransactionList({
   categoriesById,
   onEdit,
   onDelete,
+  onCreate,
 }: TransactionListProps) {
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/30 p-6 text-sm text-zinc-300">
-        No hay movimientos todavía.
-      </div>
+      <EmptyState
+        title="No hay movimientos todavia"
+        description="Cuando cargues ingresos o gastos, apareceran aca con su categoria y su importe."
+        action={
+          onCreate ? (
+            <Button type="button" variant="secondary" onClick={onCreate}>
+              Cargar primer movimiento
+            </Button>
+          ) : null
+        }
+      />
     )
   }
 
@@ -36,4 +48,3 @@ export function TransactionList({
     </div>
   )
 }
-

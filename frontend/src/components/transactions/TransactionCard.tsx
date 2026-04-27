@@ -1,5 +1,6 @@
 import type { Category, Transaction } from '../../types/finance'
 import { Card, CardBody, CardHeader, CardTitle } from '../ui/Card'
+import { Button } from '../ui/Button'
 
 export type TransactionCardProps = {
   transaction: Transaction
@@ -11,7 +12,7 @@ export type TransactionCardProps = {
 function formatMoney(amountMinor: number, currency: string) {
   const amount = amountMinor / 100
   try {
-    return new Intl.NumberFormat('es-AR', {
+    return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency,
       maximumFractionDigits: 2,
@@ -63,22 +64,24 @@ export function TransactionCard({
         <CardBody className="pt-2">
           <div className="flex items-center justify-end gap-2">
             {onEdit ? (
-              <button
+              <Button
                 type="button"
-                className="text-sm text-zinc-300 hover:text-white"
+                size="sm"
+                variant="ghost"
                 onClick={() => onEdit(transaction)}
               >
                 Editar
-              </button>
+              </Button>
             ) : null}
             {onDelete ? (
-              <button
+              <Button
                 type="button"
-                className="text-sm text-red-200 hover:text-red-100"
+                size="sm"
+                variant="danger"
                 onClick={() => onDelete(transaction)}
               >
                 Eliminar
-              </button>
+              </Button>
             ) : null}
           </div>
         </CardBody>
@@ -86,4 +89,3 @@ export function TransactionCard({
     </Card>
   )
 }
-

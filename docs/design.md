@@ -1,288 +1,156 @@
-# Diseño y arquitectura
+# Diseno de la aplicacion
 
-Este documento define la arquitectura inicial de la app de finanzas: estructura de componentes, gestión de estado, diseño de API y decisiones de persistencia.
+Este documento resume la arquitectura elegida para la app de finanzas personales.
 
-## Objetivo del sistema
+## 1. Estructura general
 
-Permitir que una persona registre ingresos y gastos, los categorice, visualice estadísticas por período y gestione un presupuesto mensual con alertas.
+La aplicacion se divide en 2 partes:
 
-## Arquitectura general
+- `frontend/`: interfaz hecha con React + TypeScript.
+- `server/`: backend con una API REST para guardar y consultar datos.
 
-- **Frontend**: SPA con React + TypeScript + React Router + Tailwind.
-- **API**: REST versionada bajo `/api/v1`.
-- **Backend**: capa HTTP (routes/controllers) + lógica (services) + persistencia (DB) + config.
+Idea general:
 
-## Frontend
+```mermaid
+flowchart LR
+  FE["Frontend"] <--> API["API /api/v1"]
+  API <--> BE["Backend"]
+```
 
-### Estructura de páginas (rutas)
+## 2. Componentes principales
 
-Rutas sugeridas (pueden crecer):
+En el frontend, los componentes principales seran:
 
-- `/` → **Dashboard**: resumen del mes, balance, gráficos principales.
-- `/transactions` → **Movimientos**: listado, filtros, alta/edición/baja.
-- `/categories` → **Categorías**: ABM de categorías.
-- `/budgets` → **Presupuestos**: presupuesto mensual (por total y opcionalmente por categoría).
-- `/settings` → **Configuración**: preferencias UI, moneda, etc.
-- `/auth/login` / `/auth/register` → **Autenticación** (si aplica).
+- `Layout`: estructura general de la app.
+- `HomePage` o `DashboardPage`: resumen del mes.
+- `TransactionsPage`: listado de movimientos.
+- `TransactionList`: muestra varias transacciones.
+- `TransactionCard`: muestra una transaccion.
+- `TransactionForm`: formulario para crear o editar movimientos.
 
-### Componentes principales (no reutilizables, “de feature”)
+## 3. Componentes reutilizables
 
-Estos suelen vivir cerca de la feature (por ahora en `src/components/` o `src/pages/` y luego mover a `src/features/...` si crece):
+Los componentes reutilizables seran los que no tengan logica de negocio:
 
-- **Transactions**
-  - `TransactionList`
-  - `TransactionFilters`
-  - `TransactionForm`
-  - `TransactionRow`
-- **Categories**
-  - `CategoryList`
-  - `CategoryForm`
-- **Budgets**
-  - `BudgetSummary`
-  - `BudgetForm`
-- **Dashboard**
-  - `MonthSummary`
-  - `SpendingByCategoryChart`
-  - `BalanceTrendChart`
+- `Button`
+- `Card`
+- `Field`
+- `Modal`
 
-### Componentes reutilizables (“UI primitives”)
+Los componentes de negocio seran los de transacciones, categorias y presupuestos.
 
-Reutilizables, sin reglas de negocio; se recomiendan en `src/components/ui/` (podés crearlo cuando empieces a usarlos):
+## 4. Manejo del estado
 
-- **Layout**: `AppShell`, `PageHeader`, `Sidebar`/`TopNav`
-- **Inputs**: `Button`, `Input`, `Select`, `Textarea`, `DatePicker` (cuando se elija lib)
-- **Feedback**: `Toast`, `Alert`, `EmptyState`, `LoadingSpinner`, `Skeleton`
-- **Data display**: `Card`, `Table`, `Tag/Badge`, `Stat`
-- **Overlays**: `Modal`, `DialogConfirm`, `Drawer`
+Se usaran dos tipos de estado:
 
-Regla: si un componente **no** conoce “transactions/budgets/etc.” y solo recibe props genéricas → es reutilizable.
+- Estado local del cliente:
+  modales abiertos, filtros, formularios, mes seleccionado.
+- Estado del servidor:
+  transacciones, categorias, presupuestos y reportes.
 
-### Gestión de estado
+Decision:
 
-Separación recomendada:
+- `useState` para cosas simples de la interfaz.
+- `Context` si algun estado se comparte entre varias pantallas.
+- Los datos importantes van en el backend, no solo en el frontend.
 
-- **Server state (datos de API)**:
-  - Se mantiene como fuente de verdad en el backend.
-  - En el frontend se consume con un “data layer” (ideal: TanStack React Query).
-  - Cache, invalidaciones y loading/error se resuelven en ese layer.
+## 5. API REST
 
-- **Client/UI state (solo interfaz)**:
-  - Estado de filtros, modales, tabs, selección de filas, paginación local.
-  - Preferencia de tema, moneda mostrada, densidad de tabla, etc.
-  - Implementación: `useState` local + (si se comparte entre pantallas) `React Context + useReducer`.
+La API va a estar versionada bajo:
 
-Persistencia local recomendada:
+- `/api/v1`
 
-- `localStorage`: preferencias UI (tema), últimos filtros, última fecha seleccionada.
-- **No** persistir en cliente datos críticos (movimientos) si existe backend; usar cache (y opcionalmente “offline draft”).
-
-### Estructura de carpetas (frontend)
-
-La estructura actual existe y se mantiene:
-
-- `src/pages/`: pantallas (route components).
-- `src/components/`: layout y componentes de UI/feature.
-- `src/hooks/`: hooks reutilizables (`useDebounce`, `useLocalStorage`, etc.).
-- `src/types/`: tipos de dominio y de API.
-- `src/utils/`: helpers (fechas, moneda, parsing).
-- `src/context/`: context/reducers para estado UI compartido.
-- `src/api/`: cliente HTTP y funciones por recurso (ej. `transactionsApi.ts`).
-
-Si el proyecto crece: mover a `src/features/{transactions,categories,...}/...` manteniendo `ui/` para primitives.
-
-## Backend / API REST
-
-### Convenciones
-
-- **Base**: `/api/v1`
-- **Formato**: JSON
-- **Auth**: Bearer token (JWT) en `Authorization: Bearer <token>` (si se implementa multiusuario).
-- **Errores**: siempre JSON con `error.code` y `error.message`.
-- **Fechas**: ISO 8601 (UTC) en strings (`2026-04-23T13:00:00.000Z`)
-- **Dinero**:
-  - Guardar en entero menor unidad (ej. centavos) para evitar floats: `amountMinor: number`.
-  - Exponer además `currency` (ISO 4217).
-
-### Recursos principales
-
-#### Health
+Recursos principales:
 
 - `GET /api/v1/health`
-  - **200**
-
-```json
-{ "status": "ok", "time": "2026-04-23T13:00:00.000Z" }
-```
-
-#### Auth (si aplica)
-
-- `POST /api/v1/auth/register`
-  - Body: `{ "email": string, "password": string, "name"?: string }`
-  - **201** → `{ "user": User, "token": string }`
-
-- `POST /api/v1/auth/login`
-  - Body: `{ "email": string, "password": string }`
-  - **200** → `{ "user": User, "token": string }`
-
-#### Users
-
-- `GET /api/v1/me` (auth)
-  - **200** → `{ "user": User }`
-
-`User`:
-
-```json
-{
-  "id": "usr_123",
-  "email": "a@b.com",
-  "name": "Nacho",
-  "createdAt": "2026-04-23T13:00:00.000Z"
-}
-```
-
-#### Categories
-
-- `GET /api/v1/categories`
-  - **200** → `{ "items": Category[] }`
-- `POST /api/v1/categories`
-  - Body: `{ "name": string, "type": "expense" | "income", "color"?: string }`
-  - **201** → `{ "category": Category }`
-- `PATCH /api/v1/categories/:id`
-  - Body parcial
-  - **200** → `{ "category": Category }`
-- `DELETE /api/v1/categories/:id`
-  - **204**
-
-`Category`:
-
-```json
-{
-  "id": "cat_123",
-  "name": "Comida",
-  "type": "expense",
-  "color": "#22c55e",
-  "createdAt": "2026-04-23T13:00:00.000Z",
-  "updatedAt": "2026-04-23T13:00:00.000Z"
-}
-```
-
-#### Transactions (movimientos)
-
-- `GET /api/v1/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense|income&categoryId=cat_...&q=...&limit=50&cursor=...`
-  - **200** → `{ "items": Transaction[], "nextCursor": string | null }`
+- `GET /api/v1/transactions`
 - `POST /api/v1/transactions`
-  - Body: `{ "type": "expense" | "income", "amountMinor": number, "currency": "ARS", "categoryId": string, "date": "YYYY-MM-DD", "note"?: string }`
-  - **201** → `{ "transaction": Transaction }`
 - `PATCH /api/v1/transactions/:id`
-  - Body parcial
-  - **200** → `{ "transaction": Transaction }`
 - `DELETE /api/v1/transactions/:id`
-  - **204**
+- `GET /api/v1/categories`
+- `POST /api/v1/categories`
+- `PATCH /api/v1/categories/:id`
+- `DELETE /api/v1/categories/:id`
+- `GET /api/v1/budgets?month=YYYY-MM`
+- `PUT /api/v1/budgets/:month`
+- `GET /api/v1/reports/summary?month=YYYY-MM`
 
-`Transaction`:
+## 6. Contratos de datos
+
+### Transaction
 
 ```json
 {
-  "id": "txn_123",
+  "id": "txn_1",
   "type": "expense",
   "amountMinor": 125000,
-  "currency": "ARS",
-  "categoryId": "cat_123",
+  "currency": "EUR",
+  "categoryId": "cat_food",
   "date": "2026-04-23",
-  "note": "Supermercado",
-  "createdAt": "2026-04-23T13:00:00.000Z",
-  "updatedAt": "2026-04-23T13:00:00.000Z"
+  "note": "Supermercado"
 }
 ```
 
-#### Budgets (presupuesto mensual)
+### Category
 
-- `GET /api/v1/budgets?month=YYYY-MM`
-  - **200** → `{ "budget": Budget | null }`
-- `PUT /api/v1/budgets/:month` (idempotente)
-  - Body: `{ "totalAmountMinor": number, "currency": "ARS", "byCategory"?: { "categoryId": string, "amountMinor": number }[] }`
-  - **200** → `{ "budget": Budget }`
+```json
+{
+  "id": "cat_food",
+  "name": "Comida",
+  "type": "expense",
+  "color": "#22c55e"
+}
+```
 
-`Budget`:
+### Budget
 
 ```json
 {
   "month": "2026-04",
   "totalAmountMinor": 800000,
-  "currency": "ARS",
-  "byCategory": [{ "categoryId": "cat_123", "amountMinor": 200000 }],
-  "createdAt": "2026-04-23T13:00:00.000Z",
-  "updatedAt": "2026-04-23T13:00:00.000Z"
-}
-```
-
-#### Reports (para dashboard)
-
-- `GET /api/v1/reports/summary?month=YYYY-MM`
-  - **200** → `{ "summary": MonthSummary }`
-
-`MonthSummary` (ejemplo):
-
-```json
-{
-  "month": "2026-04",
-  "incomeTotalMinor": 1200000,
-  "expenseTotalMinor": 650000,
-  "balanceMinor": 550000,
-  "spendingByCategory": [
-    { "categoryId": "cat_123", "amountMinor": 125000 }
+  "currency": "EUR",
+  "byCategory": [
+    {
+      "categoryId": "cat_food",
+      "amountMinor": 200000
+    }
   ]
 }
 ```
 
-### Respuestas de error (contrato)
+## 7. Que se guarda en servidor y que queda en cliente
 
-Ejemplo de error:
+Se guarda en el servidor:
 
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "amountMinor must be a positive integer",
-    "details": { "field": "amountMinor" }
-  }
-}
-```
+- transacciones;
+- categorias;
+- presupuestos.
 
-## Persistencia: servidor vs cliente
+Queda solo en el cliente:
 
-### Se persiste en el servidor (fuente de verdad)
+- estado de modales;
+- filtros;
+- preferencias visuales;
+- datos temporales de formularios.
 
-- Usuarios (si hay cuentas)
-- Categorías
-- Movimientos (income/expense)
-- Presupuestos mensuales
-- Agregados/materializados opcionales para reportes (o se calculan on-demand)
-
-### Solo en el cliente (UI/experiencia)
-
-- Tema (claro/oscuro), preferencias de UI
-- Filtros y estado de navegación (último mes seleccionado, búsqueda)
-- Drafts locales no confirmados (ej. formulario abierto)
-- Cache de requests (si se usa React Query, se considera “derivado”)
-
-## Diagrama simple del flujo de datos
+## 8. Flujo de datos
 
 ```mermaid
 flowchart LR
-  U[Usuario] -->|interacción| UI[React UI / Pages]
-  UI -->|acciones| CS[Client State\n(filtros, modales, prefs)]
-  UI -->|fetch/mutate| DL[Data Layer\n(api client + cache)]
-  DL -->|HTTP JSON| API[REST API\n/api/v1]
-  API -->|routes/controllers| SVC[Services\nreglas de negocio]
-  SVC -->|persistencia| DB[(Base de datos)]
-  DB --> SVC --> API --> DL --> UI
+  U["Usuario"] --> FE["Frontend"]
+  FE --> API["API"]
+  API --> BE["Backend"]
+  BE --> API
+  API --> FE
 ```
 
-## Decisiones abiertas (para definir más adelante)
+## 9. Decision final
 
-- **Autenticación**: single-user local vs multi-user con JWT.
-- **DB**: SQLite/Postgres y ORM (Prisma/Drizzle/etc.).
-- **Reportes**: on-demand vs materializados.
-- **Offline**: si se soportan operaciones sin conexión.
+Se eligio una arquitectura simple:
 
+- frontend en React;
+- backend con API REST;
+- datos importantes persistidos en servidor;
+- componentes UI reutilizables separados de los componentes de negocio.
+
+Es una solucion suficiente para una app de bootcamp porque es clara, ordenada y facil de ampliar mas adelante.

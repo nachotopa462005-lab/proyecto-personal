@@ -29,7 +29,7 @@ export function TransactionForm({
   onCancel,
 }: TransactionFormProps) {
   const defaultType: TransactionType = initialValues?.type ?? 'expense'
-  const defaultCurrency = initialValues?.currency ?? 'ARS'
+  const defaultCurrency = initialValues?.currency ?? 'EUR'
 
   const allowedCategories = useMemo(
     () => categories.filter((c) => c.type === defaultType),
@@ -38,7 +38,6 @@ export function TransactionForm({
 
   const [type, setType] = useState<TransactionType>(defaultType)
   const [amountMinor, setAmountMinor] = useState<number>(initialValues?.amountMinor ?? 0)
-  const [currency, setCurrency] = useState<'ARS' | 'USD'>(defaultCurrency)
   const [categoryId, setCategoryId] = useState<string>(
     initialValues?.categoryId ?? allowedCategories[0]?.id ?? '',
   )
@@ -57,13 +56,13 @@ export function TransactionForm({
 
     if (!categoryId) return setError('Elegí una categoría.')
     if (!Number.isInteger(amountMinor) || amountMinor <= 0)
-      return setError('El monto debe ser un entero positivo (en centavos).')
+      return setError('El monto debe ser un entero positivo (en centimos).')
     if (!date) return setError('Elegí una fecha.')
 
     onSubmit({
       type,
       amountMinor,
-      currency,
+      currency: defaultCurrency,
       categoryId,
       date,
       note: note.trim() ? note.trim() : undefined,
@@ -99,24 +98,14 @@ export function TransactionForm({
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Monto (centavos)" hint="Ej: 125000 = $1.250,00">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Monto (centimos)" hint="Ej: 125000 = 1.250,00 EUR">
           <Input
             inputMode="numeric"
             value={String(amountMinor)}
             onChange={(e) => setAmountMinor(Number(e.target.value))}
             placeholder="125000"
           />
-        </Field>
-
-        <Field label="Moneda">
-          <Select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value as 'ARS' | 'USD')}
-          >
-            <option value="ARS">ARS</option>
-            <option value="USD">USD</option>
-          </Select>
         </Field>
 
         <Field label="Fecha">
@@ -150,4 +139,3 @@ export function TransactionForm({
     </form>
   )
 }
-

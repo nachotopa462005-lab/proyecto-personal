@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
-import type { Category, Transaction, TransactionDraft } from '../types/finance'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TransactionList } from '../components/transactions/TransactionList'
 import { Button } from '../components/ui/Button'
-import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
 import { Modal } from '../components/ui/Modal'
+import { SectionHeader } from '../components/ui/SectionHeader'
+import { StatCard } from '../components/ui/StatCard'
 import { TransactionForm } from '../components/transactions/TransactionForm'
+import { useAppUi } from '../context'
+import { useLocalStorageState } from '../hooks'
+import type { Category, Transaction, TransactionDraft } from '../types/finance'
 
 const seedCategories: Category[] = [
   { id: 'cat_food', name: 'Comida', type: 'expense', color: '#22c55e' },
@@ -17,7 +20,7 @@ const seedTransactions: Transaction[] = [
     id: 'txn_1',
     type: 'expense',
     amountMinor: 125000,
-    currency: 'ARS',
+    currency: 'EUR',
     categoryId: 'cat_food',
     date: '2026-04-23',
     note: 'Supermercado',
@@ -26,122 +29,164 @@ const seedTransactions: Transaction[] = [
     id: 'txn_2',
     type: 'income',
     amountMinor: 120000000,
-    currency: 'ARS',
+    currency: 'EUR',
     categoryId: 'cat_salary',
     date: '2026-04-01',
     note: 'Abril',
   },
 ]
 
+function formatMoney(amountMinor: number, currency: 'EUR') {
+  const amount = amountMinor / 100
+  try {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
+}
+
 export function HomePage() {
   const [categories] = useState<Category[]>(seedCategories)
-  const [transactions, setTransactions] = useState<Transaction[]>(seedTransactions)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [transactions, setTransactions] = useLocalStorageState<Transaction[]>(
+    'finance-transactions',
+    seedTransactions,
+  )
+  const {
+    createModalOpen,
+    transactionFilter,
+    openCreateModal,
+    closeCreateModal,
+    setTransactionFilter,
+  } = useAppUi()
 
   const categoriesById = useMemo(() => {
     return Object.fromEntries(categories.map((c) => [c.id, c])) as Record<string, Category>
   }, [categories])
 
+  const filteredTransactions = useMemo(() => {
+    if (transactionFilter === 'all') return transactions
+    return transactions.filter((transaction) => transaction.type === transactionFilter)
+  }, [transactions, transactionFilter])
+
   const totals = useMemo(() => {
     let income = 0
     let expense = 0
-    for (const t of transactions) {
+
+    for (const t of filteredTransactions) {
       if (t.type === 'income') income += t.amountMinor
       else expense += t.amountMinor
     }
-    return { income, expense, balance: income - expense }
-  }, [transactions])
 
-  function handleCreate(values: TransactionDraft) {
+    return { income, expense, balance: income - expense }
+  }, [filteredTransactions])
+
+  useEffect(() => {
+    document.title = `Balance ${formatMoney(totals.balance, 'EUR')} | Finanzas personales`
+  }, [totals.balance])
+
+  const handleCreate = useCallback((values: TransactionDraft) => {
     const next: Transaction = {
       ...values,
       id: `txn_${Date.now()}`,
     }
+
     setTransactions((prev) => [next, ...prev])
-    setCreateOpen(false)
-  }
+    closeCreateModal()
+  }, [closeCreateModal, setTransactions])
+
+  const handleDelete = useCallback((transaction: Transaction) => {
+    setTransactions((prev) => prev.filter((item) => item.id !== transaction.id))
+  }, [setTransactions])
+
+  const filterActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant={transactionFilter === 'all' ? 'primary' : 'ghost'}
+        size="sm"
+        onClick={() => setTransactionFilter('all')}
+      >
+        Todos
+      </Button>
+      <Button
+        variant={transactionFilter === 'income' ? 'primary' : 'ghost'}
+        size="sm"
+        onClick={() => setTransactionFilter('income')}
+      >
+        Ingresos
+      </Button>
+      <Button
+        variant={transactionFilter === 'expense' ? 'primary' : 'ghost'}
+        size="sm"
+        onClick={() => setTransactionFilter('expense')}
+      >
+        Gastos
+      </Button>
+    </div>
+  )
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Gestor de finanzas personales
-          </h1>
-          <p className="max-w-prose text-zinc-300">
-            Interfaz moderna y simple: movimientos claros, categorías visibles y
-            métricas del mes.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>Nuevo movimiento</Button>
-      </div>
+    <section className="space-y-8">
+      <SectionHeader
+        title="Gestor de finanzas personales"
+        description="Una vista simple y profesional para registrar ingresos, ordenar gastos y seguir el balance del mes."
+        actions={<Button onClick={openCreateModal}>Nuevo movimiento</Button>}
+      />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Ingresos</CardTitle>
-              <CardDescription>Total del período</CardDescription>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-2">
-            <div className="text-2xl font-semibold tabular-nums text-emerald-200">
-              ${(totals.income / 100).toFixed(2)}
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Gastos</CardTitle>
-              <CardDescription>Total del período</CardDescription>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-2">
-            <div className="text-2xl font-semibold tabular-nums text-red-200">
-              ${(totals.expense / 100).toFixed(2)}
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Balance</CardTitle>
-              <CardDescription>Ingresos - gastos</CardDescription>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-2">
-            <div className="text-2xl font-semibold tabular-nums text-zinc-50">
-              ${(totals.balance / 100).toFixed(2)}
-            </div>
-          </CardBody>
-        </Card>
+        <StatCard
+          title="Ingresos"
+          description="Total del periodo visible"
+          value={formatMoney(totals.income, 'EUR')}
+          tone="positive"
+        />
+        <StatCard
+          title="Gastos"
+          description="Total del periodo visible"
+          value={formatMoney(totals.expense, 'EUR')}
+          tone="negative"
+        />
+        <StatCard
+          title="Balance"
+          description="Ingresos menos gastos"
+          value={formatMoney(totals.balance, 'EUR')}
+        />
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Movimientos</h2>
-          <div className="text-sm text-zinc-400">
-            {transactions.length} items
-          </div>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-100">
+            Movimientos
+          </h2>
+          {filterActions}
         </div>
-        <TransactionList items={transactions} categoriesById={categoriesById} />
+
+        <div className="text-sm text-zinc-400">{filteredTransactions.length} items</div>
+
+        <TransactionList
+          items={filteredTransactions}
+          categoriesById={categoriesById}
+          onDelete={handleDelete}
+          onCreate={openCreateModal}
+        />
       </div>
 
       <Modal
-        open={createOpen}
+        open={createModalOpen}
         title="Nuevo movimiento"
-        description="Cargá un gasto o ingreso. El monto se ingresa en centavos para evitar errores de redondeo."
-        onClose={() => setCreateOpen(false)}
+        description="Carga un gasto o un ingreso y guardalo con su categoria y fecha."
+        onClose={closeCreateModal}
         footer={null}
       >
         <TransactionForm
           categories={categories}
           onSubmit={handleCreate}
-          onCancel={() => setCreateOpen(false)}
+          onCancel={closeCreateModal}
         />
       </Modal>
     </section>
   )
 }
-

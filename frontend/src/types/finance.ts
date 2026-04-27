@@ -1,6 +1,6 @@
 export type Money = {
   amountMinor: number
-  currency: 'ARS' | 'USD'
+  currency: 'EUR'
 }
 
 export type Category = {
@@ -25,4 +25,3 @@ export type Transaction = {
 export type TransactionDraft = Omit<Transaction, 'id'> & {
   id?: string
 }
-
