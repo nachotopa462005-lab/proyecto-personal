@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { EmptyState } from '../components/ui/EmptyState'
 import { SectionHeader } from '../components/ui/SectionHeader'
 import { StatCard } from '../components/ui/StatCard'
 import { useAppUi } from '../context'
@@ -8,7 +9,7 @@ import { formatMoney, useFinanceData } from '../hooks'
 
 export function HomePage() {
   const { transactionFilter, setTransactionFilter } = useAppUi()
-  const { transactions } = useFinanceData()
+  const { transactions, loading, error, retry } = useFinanceData()
 
   const filteredTransactions = useMemo(() => {
     if (transactionFilter === 'all') return transactions
@@ -28,8 +29,14 @@ export function HomePage() {
   }, [filteredTransactions])
 
   useEffect(() => {
-    document.title = `Balance ${formatMoney(totals.balance)} | Finanzas personales`
-  }, [totals.balance])
+    const title = loading
+      ? 'Cargando resumen | Finanzas personales'
+      : error
+        ? 'Error de carga | Finanzas personales'
+        : `Balance ${formatMoney(totals.balance)} | Finanzas personales`
+
+    document.title = title
+  }, [error, loading, totals.balance])
 
   const handleShowAll = useCallback(() => setTransactionFilter('all'), [setTransactionFilter])
   const handleShowIncome = useCallback(() => setTransactionFilter('income'), [setTransactionFilter])
@@ -77,19 +84,19 @@ export function HomePage() {
         <StatCard
           title="Ingresos"
           description="Total del periodo visible"
-          value={formatMoney(totals.income)}
+          value={loading ? 'Cargando...' : formatMoney(totals.income)}
           tone="positive"
         />
         <StatCard
           title="Gastos"
           description="Total del periodo visible"
-          value={formatMoney(totals.expense)}
+          value={loading ? 'Cargando...' : formatMoney(totals.expense)}
           tone="negative"
         />
         <StatCard
           title="Balance"
           description="Ingresos menos gastos"
-          value={formatMoney(totals.balance)}
+          value={loading ? 'Cargando...' : formatMoney(totals.balance)}
         />
       </div>
 
@@ -101,13 +108,31 @@ export function HomePage() {
           {filterActions}
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 text-sm text-zinc-300">
-          El resumen esta mostrando <span className="font-medium text-zinc-100">
-            {filteredTransactions.length}
-          </span>{' '}
-          movimientos. Para ver el detalle completo y cargar nuevos datos, entra en la
-          pagina de movimientos.
-        </div>
+        {error ? (
+          <EmptyState
+            title="No se pudo cargar el resumen"
+            description={error}
+            action={
+              <Button type="button" variant="secondary" onClick={() => void retry()}>
+                Reintentar
+              </Button>
+            }
+          />
+        ) : (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 text-sm text-zinc-300">
+            {loading ? (
+              'Cargando movimientos desde la API...'
+            ) : (
+              <>
+                El resumen esta mostrando <span className="font-medium text-zinc-100">
+                  {filteredTransactions.length}
+                </span>{' '}
+                movimientos. Para ver el detalle completo y cargar nuevos datos, entra en
+                la pagina de movimientos.
+              </>
+            )}
+          </div>
+        )}
       </div>
     </section>
   )

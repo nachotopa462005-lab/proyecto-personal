@@ -1,32 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  createTransaction as createTransactionRequest,
+  deleteTransaction as deleteTransactionRequest,
+  getTransactions,
+} from '../api/transactions'
 import type { Category, Transaction, TransactionDraft } from '../types/finance'
-import { useLocalStorageState } from './useLocalStorageState'
 
 const seedCategories: Category[] = [
   { id: 'cat_food', name: 'Comida', type: 'expense', color: '#22c55e' },
   { id: 'cat_transport', name: 'Transporte', type: 'expense', color: '#60a5fa' },
   { id: 'cat_salary', name: 'Sueldo', type: 'income', color: '#a78bfa' },
-]
-
-const seedTransactions: Transaction[] = [
-  {
-    id: 'txn_1',
-    type: 'expense',
-    amountMinor: 125000,
-    currency: 'EUR',
-    categoryId: 'cat_food',
-    date: '2026-04-23',
-    note: 'Supermercado',
-  },
-  {
-    id: 'txn_2',
-    type: 'income',
-    amountMinor: 120000000,
-    currency: 'EUR',
-    categoryId: 'cat_salary',
-    date: '2026-04-01',
-    note: 'Abril',
-  },
 ]
 
 export function formatMoney(amountMinor: number, currency: 'EUR' = 'EUR') {
@@ -44,32 +27,54 @@ export function formatMoney(amountMinor: number, currency: 'EUR' = 'EUR') {
 
 export function useFinanceData() {
   const [categories] = useState<Category[]>(seedCategories)
-  const [transactions, setTransactions] = useLocalStorageState<Transaction[]>(
-    'finance-transactions',
-    seedTransactions,
-  )
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const categoriesById = useMemo(() => {
     return Object.fromEntries(categories.map((c) => [c.id, c])) as Record<string, Category>
   }, [categories])
 
-  const createTransaction = useCallback((values: TransactionDraft) => {
-    const next: Transaction = {
-      ...values,
-      id: `txn_${Date.now()}`,
+  const loadTransactions = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await getTransactions()
+      setTransactions(response.items)
+    } catch (fetchError) {
+      const message =
+        fetchError instanceof Error
+          ? fetchError.message
+          : 'No se pudieron cargar los movimientos.'
+      setError(message)
+    } finally {
+      setLoading(false)
     }
+  }, [])
 
-    setTransactions((prev) => [next, ...prev])
-  }, [setTransactions])
+  useEffect(() => {
+    void loadTransactions()
+  }, [loadTransactions])
 
-  const deleteTransaction = useCallback((transaction: Transaction) => {
+  const createTransaction = useCallback(async (values: TransactionDraft) => {
+    const response = await createTransactionRequest(values)
+    setTransactions((prev) => [response.transaction, ...prev])
+    return response.transaction
+  }, [])
+
+  const deleteTransaction = useCallback(async (transaction: Transaction) => {
+    await deleteTransactionRequest(transaction.id)
     setTransactions((prev) => prev.filter((item) => item.id !== transaction.id))
-  }, [setTransactions])
+  }, [])
 
   return {
     categories,
     categoriesById,
     transactions,
+    loading,
+    error,
+    retry: loadTransactions,
     createTransaction,
     deleteTransaction,
   }

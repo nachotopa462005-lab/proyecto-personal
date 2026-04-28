@@ -20,8 +20,10 @@ export type Transaction = {
   categoryId: string
   date: string // YYYY-MM-DD
   note?: string
+  createdAt: string
+  updatedAt: string
 }
 
-export type TransactionDraft = Omit<Transaction, 'id'> & {
+export type TransactionDraft = Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & {
   id?: string
 }

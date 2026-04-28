@@ -1,1 +1,4 @@
 proyecto-personal/
+server/node_modules/
+server/.npm-cache/
+server/.server.pid

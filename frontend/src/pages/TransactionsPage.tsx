@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TransactionList } from '../components/transactions/TransactionList'
 import { TransactionForm } from '../components/transactions/TransactionForm'
 import { Button } from '../components/ui/Button'
+import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { SectionHeader } from '../components/ui/SectionHeader'
 import { useAppUi } from '../context'
@@ -20,6 +21,9 @@ export function TransactionsPage() {
     categories,
     categoriesById,
     transactions,
+    loading,
+    error,
+    retry,
     createTransaction,
     deleteTransaction,
   } = useFinanceData()
@@ -31,14 +35,34 @@ export function TransactionsPage() {
   }, [transactions, transactionFilter])
 
   const handleCreate = useCallback((values: TransactionDraft) => {
-    createTransaction(values)
-    closeCreateModal()
-    setFeedbackMessage('Movimiento guardado correctamente.')
+    void (async () => {
+      try {
+        await createTransaction(values)
+        closeCreateModal()
+        setFeedbackMessage('Movimiento guardado correctamente.')
+      } catch (requestError) {
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo guardar el movimiento.'
+        setFeedbackMessage(message)
+      }
+    })()
   }, [closeCreateModal, createTransaction])
 
   const handleDelete = useCallback((transaction: Transaction) => {
-    deleteTransaction(transaction)
-    setFeedbackMessage('Movimiento eliminado correctamente.')
+    void (async () => {
+      try {
+        await deleteTransaction(transaction)
+        setFeedbackMessage('Movimiento eliminado correctamente.')
+      } catch (requestError) {
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo eliminar el movimiento.'
+        setFeedbackMessage(message)
+      }
+    })()
   }, [deleteTransaction])
 
   useEffect(() => {
@@ -102,12 +126,28 @@ export function TransactionsPage() {
         </div>
       ) : null}
 
-      <TransactionList
-        items={filteredTransactions}
-        categoriesById={categoriesById}
-        onDelete={handleDelete}
-        onCreate={openCreateModal}
-      />
+      {error ? (
+        <EmptyState
+          title="No se pudieron cargar los movimientos"
+          description={error}
+          action={
+            <Button type="button" variant="secondary" onClick={() => void retry()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : loading ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-5 text-sm text-zinc-300">
+          Cargando movimientos desde la API...
+        </div>
+      ) : (
+        <TransactionList
+          items={filteredTransactions}
+          categoriesById={categoriesById}
+          onDelete={handleDelete}
+          onCreate={openCreateModal}
+        />
+      )}
 
       <Modal
         open={createModalOpen}
