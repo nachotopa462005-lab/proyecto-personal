@@ -72,7 +72,7 @@ export function TransactionForm({
 
     if (!type) return setError('Elige si el movimiento es gasto o ingreso.')
     if (!categoryId) return setError('Elige una categoria.')
-    if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
+    if (amountMinor === null || !Number.isInteger(amountMinor) || amountMinor <= 0) {
       return setError('Escribe un importe valido. Puedes usar coma o punto decimal.')
     }
     if (!date) return setError('Elige una fecha.')
