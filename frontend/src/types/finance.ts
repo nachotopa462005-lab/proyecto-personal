@@ -7,10 +7,17 @@ export type Category = {
   id: string
   name: string
   type: 'expense' | 'income'
-  color?: string
+  color: string
 }
 
 export type TransactionType = 'expense' | 'income'
+
+export type Budget = {
+  month: string
+  amountMinor: number
+  currency: 'EUR'
+  updatedAt: string
+}
 
 export type Transaction = {
   id: string

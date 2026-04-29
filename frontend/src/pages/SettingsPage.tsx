@@ -26,14 +26,14 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Persistencia local</CardTitle>
-              <CardDescription>Comportamiento de la demo</CardDescription>
+              <CardTitle>Backend y API</CardTitle>
+              <CardDescription>Fuente de verdad de la aplicacion</CardDescription>
             </div>
           </CardHeader>
           <CardBody className="space-y-2 text-sm text-zinc-300">
-            <p>Los movimientos se guardan en el navegador usando localStorage.</p>
+            <p>Los movimientos y el presupuesto mensual se guardan en el backend.</p>
             <p className="text-zinc-400">
-              Esto permite probar la app sin backend real.
+              La interfaz consulta la API para cargar y actualizar los datos reales.
             </p>
           </CardBody>
         </Card>

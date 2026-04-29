@@ -1,4 +1,4 @@
-import type { Transaction } from './finance'
+import type { Budget, Category, Transaction } from './finance'
 
 export type ApiError = {
   error: {
@@ -18,4 +18,12 @@ export type TransactionsListResponse = {
 
 export type TransactionResponse = {
   transaction: Transaction
+}
+
+export type CategoriesListResponse = {
+  items: Category[]
+}
+
+export type BudgetResponse = {
+  budget: Budget | null
 }

@@ -1,5 +1,7 @@
 import type { Request } from 'express'
+import { categoriesStore } from '../data/categoriesStore.js'
 import type { TransactionType } from '../data/transactionsStore.js'
+import { badRequest, isValidDate, type ValidationResult } from './shared.js'
 
 export type CreateTransactionInput = {
   type: TransactionType
@@ -12,44 +14,13 @@ export type CreateTransactionInput = {
 
 export type UpdateTransactionInput = Partial<CreateTransactionInput>
 
-type ValidationError = {
-  status: 400
-  body: {
-    error: {
-      code: 'VALIDATION_ERROR'
-      message: string
-    }
-  }
-}
-
-type ValidationSuccess<T> = {
-  status: 200
-  value: T
-}
-
 function isTransactionType(value: unknown): value is TransactionType {
   return value === 'income' || value === 'expense'
 }
 
-function isValidDate(value: unknown): value is string {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-}
-
-function badRequest(message: string): ValidationError {
-  return {
-    status: 400,
-    body: {
-      error: {
-        code: 'VALIDATION_ERROR',
-        message,
-      },
-    },
-  }
-}
-
 export function parseCreateTransaction(
   req: Request,
-): ValidationError | ValidationSuccess<CreateTransactionInput> {
+): ValidationResult<CreateTransactionInput> {
   const body = req.body as Record<string, unknown>
 
   if (!isTransactionType(body.type)) return badRequest('type must be income or expense')
@@ -59,6 +30,10 @@ export function parseCreateTransaction(
   if (body.currency !== 'EUR') return badRequest('currency must be EUR')
   if (typeof body.categoryId !== 'string' || !body.categoryId.trim()) {
     return badRequest('categoryId is required')
+  }
+  const categoryId = body.categoryId.trim()
+  if (!categoriesStore.some((category) => category.id === categoryId)) {
+    return badRequest('categoryId must reference an existing category')
   }
   if (!isValidDate(body.date)) return badRequest('date must have format YYYY-MM-DD')
   if (body.note !== undefined && typeof body.note !== 'string') {
@@ -71,7 +46,7 @@ export function parseCreateTransaction(
       type: body.type,
       amountMinor: Number(body.amountMinor),
       currency: 'EUR' as const,
-      categoryId: body.categoryId.trim(),
+      categoryId,
       date: body.date,
       note: typeof body.note === 'string' && body.note.trim() ? body.note.trim() : undefined,
     },
@@ -80,7 +55,7 @@ export function parseCreateTransaction(
 
 export function parseUpdateTransaction(
   req: Request,
-): ValidationError | ValidationSuccess<UpdateTransactionInput> {
+): ValidationResult<UpdateTransactionInput> {
   const body = req.body as Record<string, unknown>
   const next: UpdateTransactionInput = {}
 
@@ -105,7 +80,11 @@ export function parseUpdateTransaction(
     if (typeof body.categoryId !== 'string' || !body.categoryId.trim()) {
       return badRequest('categoryId must be a non-empty string')
     }
-    next.categoryId = body.categoryId.trim()
+    const categoryId = body.categoryId.trim()
+    if (!categoriesStore.some((category) => category.id === categoryId)) {
+      return badRequest('categoryId must reference an existing category')
+    }
+    next.categoryId = categoryId
   }
 
   if (body.date !== undefined) {

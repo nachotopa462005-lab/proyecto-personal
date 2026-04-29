@@ -13,12 +13,30 @@ export type TransactionFormProps = {
   onCancel?: () => void
 }
 
-function todayYYYYMMDD() {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+function parseAmountToMinorUnits(rawValue: string) {
+  const sanitized = rawValue.trim().replace(/\s/g, '')
+
+  if (!sanitized) return null
+
+  const lastComma = sanitized.lastIndexOf(',')
+  const lastDot = sanitized.lastIndexOf('.')
+  const decimalIndex = Math.max(lastComma, lastDot)
+
+  if (decimalIndex === -1) {
+    const integerOnly = sanitized.replace(/[^\d]/g, '')
+    if (!integerOnly) return null
+    return Number(integerOnly) * 100
+  }
+
+  const integerPart = sanitized.slice(0, decimalIndex).replace(/[^\d]/g, '')
+  const decimalPart = sanitized.slice(decimalIndex + 1).replace(/[^\d]/g, '')
+
+  if (!integerPart && !decimalPart) return null
+
+  const normalizedInteger = integerPart || '0'
+  const normalizedDecimals = `${decimalPart}00`.slice(0, 2)
+
+  return Number(normalizedInteger) * 100 + Number(normalizedDecimals)
 }
 
 export function TransactionForm({
@@ -28,20 +46,16 @@ export function TransactionForm({
   onSubmit,
   onCancel,
 }: TransactionFormProps) {
-  const defaultType: TransactionType = initialValues?.type ?? 'expense'
+  const defaultType = initialValues?.type ?? ''
   const defaultCurrency = initialValues?.currency ?? 'EUR'
 
-  const allowedCategories = useMemo(
-    () => categories.filter((c) => c.type === defaultType),
-    [categories, defaultType],
-  )
-
-  const [type, setType] = useState<TransactionType>(defaultType)
-  const [amountMinor, setAmountMinor] = useState<number>(initialValues?.amountMinor ?? 0)
-  const [categoryId, setCategoryId] = useState<string>(
-    initialValues?.categoryId ?? allowedCategories[0]?.id ?? '',
-  )
-  const [date, setDate] = useState<string>(initialValues?.date ?? todayYYYYMMDD())
+  const [type, setType] = useState<TransactionType | ''>(defaultType)
+  const [amountInput, setAmountInput] = useState<string>(() => {
+    if (typeof initialValues?.amountMinor !== 'number') return ''
+    return (initialValues.amountMinor / 100).toFixed(2).replace('.', ',')
+  })
+  const [categoryId, setCategoryId] = useState<string>(initialValues?.categoryId ?? '')
+  const [date, setDate] = useState<string>(initialValues?.date ?? '')
   const [note, setNote] = useState<string>(initialValues?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
@@ -54,10 +68,14 @@ export function TransactionForm({
     e.preventDefault()
     setError(null)
 
-    if (!categoryId) return setError('Elegí una categoría.')
-    if (!Number.isInteger(amountMinor) || amountMinor <= 0)
-      return setError('El monto debe ser un entero positivo (en centimos).')
-    if (!date) return setError('Elegí una fecha.')
+    const amountMinor = parseAmountToMinorUnits(amountInput)
+
+    if (!type) return setError('Elige si el movimiento es gasto o ingreso.')
+    if (!categoryId) return setError('Elige una categoria.')
+    if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
+      return setError('Escribe un importe valido. Puedes usar coma o punto decimal.')
+    }
+    if (!date) return setError('Elige una fecha.')
 
     onSubmit({
       type,
@@ -76,19 +94,20 @@ export function TransactionForm({
           <Select
             value={type}
             onChange={(e) => {
-              const next = e.target.value as TransactionType
+              const next = e.target.value as TransactionType | ''
               setType(next)
-              const nextCategories = categories.filter((c) => c.type === next)
-              setCategoryId(nextCategories[0]?.id ?? '')
+              setCategoryId('')
             }}
           >
+            <option value="">Selecciona una opcion</option>
             <option value="expense">Gasto</option>
             <option value="income">Ingreso</option>
           </Select>
         </Field>
 
-        <Field label="Categoría">
+        <Field label="Categoria">
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Selecciona una categoria</option>
             {categoriesForType.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -99,12 +118,12 @@ export function TransactionForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Monto (centimos)" hint="Ej: 125000 = 1.250,00 EUR">
+        <Field label="Importe" hint="Ej: 12,50 o 1.250,75">
           <Input
-            inputMode="numeric"
-            value={String(amountMinor)}
-            onChange={(e) => setAmountMinor(Number(e.target.value))}
-            placeholder="125000"
+            inputMode="decimal"
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            placeholder="0,00"
           />
         </Field>
 
@@ -118,7 +137,7 @@ export function TransactionForm({
           rows={3}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Ej: Supermercado, taxi, etc."
+          placeholder="Ej: supermercado, cafe, taxi..."
         />
       </Field>
 

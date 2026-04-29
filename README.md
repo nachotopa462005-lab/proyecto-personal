@@ -28,6 +28,38 @@ El backend queda disponible en:
 
 - `http://localhost:4000/api/v1`
 
+## Variables de entorno del frontend
+
+El frontend usa:
+
+- `VITE_API_BASE_URL`
+
+Ejemplo local:
+
+```bash
+VITE_API_BASE_URL=http://localhost:4000/api/v1
+```
+
+Hay un ejemplo en:
+
+- `frontend/.env.example`
+
+## Despliegue en Vercel
+
+Este repo esta preparado para desplegarse en Vercel como monorepo con dos proyectos:
+
+- un proyecto para `server/`
+- un proyecto para `frontend/`
+
+URLs de produccion:
+
+- Frontend: pendiente de despliegue en Vercel
+- API: pendiente de despliegue en Vercel
+
+Pasos detallados:
+
+- `docs/deployment.md`
+
 ## Documentacion
 
 - componentes: `docs/components.md`
@@ -35,4 +67,6 @@ El backend queda disponible en:
 - context: `docs/context.md`
 - rutas: `docs/routing.md`
 - formularios: `docs/forms.md`
-- api: `docs/api.md`
+- api backend: `docs/api.md`
+- api client: `docs/api-client.md`
+- despliegue: `docs/deployment.md`

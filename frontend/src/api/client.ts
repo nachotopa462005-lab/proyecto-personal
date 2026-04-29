@@ -1,6 +1,7 @@
 import type { ApiError } from '../types/api'
 
-const API_BASE_URL = 'http://localhost:4000/api/v1'
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:4000/api/v1'
 
 export class ApiClientError extends Error {
   status: number

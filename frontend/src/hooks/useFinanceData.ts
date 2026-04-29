@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { upsertBudget as upsertBudgetRequest, getBudget } from '../api/budgets'
+import { getCategories } from '../api/categories'
 import {
   createTransaction as createTransactionRequest,
   deleteTransaction as deleteTransactionRequest,
   getTransactions,
 } from '../api/transactions'
-import type { Category, Transaction, TransactionDraft } from '../types/finance'
+import type { Budget, Category, Transaction, TransactionDraft } from '../types/finance'
 
-const seedCategories: Category[] = [
-  { id: 'cat_food', name: 'Comida', type: 'expense', color: '#22c55e' },
-  { id: 'cat_transport', name: 'Transporte', type: 'expense', color: '#60a5fa' },
-  { id: 'cat_salary', name: 'Sueldo', type: 'income', color: '#a78bfa' },
-]
+function getCurrentMonth() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${now.getFullYear()}-${month}`
+}
 
 export function formatMoney(amountMinor: number, currency: 'EUR' = 'EUR') {
   const amount = amountMinor / 100
@@ -26,36 +28,45 @@ export function formatMoney(amountMinor: number, currency: 'EUR' = 'EUR') {
 }
 
 export function useFinanceData() {
-  const [categories] = useState<Category[]>(seedCategories)
+  const [categories, setCategories] = useState<Category[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [budget, setBudget] = useState<Budget | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const currentMonth = useMemo(() => getCurrentMonth(), [])
 
   const categoriesById = useMemo(() => {
     return Object.fromEntries(categories.map((c) => [c.id, c])) as Record<string, Category>
   }, [categories])
 
-  const loadTransactions = useCallback(async () => {
+  const loadFinanceData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const response = await getTransactions()
-      setTransactions(response.items)
+      const [transactionsResponse, categoriesResponse, budgetResponse] = await Promise.all([
+        getTransactions(),
+        getCategories(),
+        getBudget(currentMonth),
+      ])
+
+      setTransactions(transactionsResponse.items)
+      setCategories(categoriesResponse.items)
+      setBudget(budgetResponse.budget)
     } catch (fetchError) {
       const message =
         fetchError instanceof Error
           ? fetchError.message
-          : 'No se pudieron cargar los movimientos.'
+          : 'No se pudieron cargar los datos.'
       setError(message)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentMonth])
 
   useEffect(() => {
-    void loadTransactions()
-  }, [loadTransactions])
+    void loadFinanceData()
+  }, [loadFinanceData])
 
   const createTransaction = useCallback(async (values: TransactionDraft) => {
     const response = await createTransactionRequest(values)
@@ -68,14 +79,23 @@ export function useFinanceData() {
     setTransactions((prev) => prev.filter((item) => item.id !== transaction.id))
   }, [])
 
+  const saveBudget = useCallback(async (amountMinor: number) => {
+    const response = await upsertBudgetRequest(currentMonth, amountMinor)
+    setBudget(response.budget)
+    return response.budget
+  }, [currentMonth])
+
   return {
     categories,
     categoriesById,
     transactions,
+    budget,
+    currentMonth,
     loading,
     error,
-    retry: loadTransactions,
+    retry: loadFinanceData,
     createTransaction,
     deleteTransaction,
+    saveBudget,
   }
 }
