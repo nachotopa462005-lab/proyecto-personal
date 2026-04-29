@@ -53,8 +53,8 @@ Este repo esta preparado para desplegarse en Vercel como monorepo con dos proyec
 
 URLs de produccion:
 
-- Frontend: pendiente de despliegue en Vercel
-- API: pendiente de despliegue en Vercel
+- Frontend: `https://proyecto-personal-hosd-pj4i9n6as-ignacios-projects-3a21675d.vercel.app/`
+- API: `https://proyecto-personal-c7af3cly7-ignacios-projects-3a21675d.vercel.app/api/v1`
 
 Pasos detallados:
 

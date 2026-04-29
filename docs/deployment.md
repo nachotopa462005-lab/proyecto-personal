@@ -61,6 +61,10 @@ Despues del despliegue, revisa esto:
 - abre `https://tu-backend.vercel.app/api/v1/health`
 - deberia devolver un JSON con `status: "ok"`
 
+URL desplegada en este proyecto:
+
+- `https://proyecto-personal-c7af3cly7-ignacios-projects-3a21675d.vercel.app/api/v1`
+
 ### Frontend
 
 - abre la URL del frontend
@@ -71,6 +75,10 @@ Despues del despliegue, revisa esto:
 - vuelve al resumen y comprueba que cambian los datos
 - define un presupuesto mensual y revisa que se descuente al crear gastos
 
+URL desplegada en este proyecto:
+
+- `https://proyecto-personal-hosd-pj4i9n6as-ignacios-projects-3a21675d.vercel.app/`
+
 ## 6. Si cambias la URL del backend
 
 Si el backend cambia de dominio:
@@ -79,6 +87,10 @@ Si el backend cambia de dominio:
 2. ve a `Settings` -> `Environment Variables`
 3. actualiza `VITE_API_BASE_URL`
 4. haz un redeploy del frontend
+
+Valor actual esperado para el frontend:
+
+`VITE_API_BASE_URL=https://proyecto-personal-c7af3cly7-ignacios-projects-3a21675d.vercel.app/api/v1`
 
 ## 7. Archivos relevantes para el despliegue
 
