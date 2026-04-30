@@ -12,4 +12,6 @@ export type TransactionRecord = {
   updatedAt: string
 }
 
-export const transactionsStore: TransactionRecord[] = []
+import { readJsonFile } from '../utils/fileStore.js'
+
+export const transactionsStore: TransactionRecord[] = readJsonFile('transactions.json', [])
