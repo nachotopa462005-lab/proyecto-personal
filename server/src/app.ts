@@ -2,7 +2,7 @@ import cors from 'cors'
 import express from 'express'
 import { apiRouter } from './routes/index.js'
 
-export const app = express()
+const app = express()
 
 app.use(cors())
 app.use(express.json())
@@ -18,7 +18,12 @@ app.use((_req, res) => {
   })
 })
 
-app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((
+  error: Error,
+  _req: express.Request,
+  res: express.Response,
+  _next: express.NextFunction,
+) => {
   console.error(error)
 
   res.status(500).json({
@@ -28,3 +33,5 @@ app.use((error: Error, _req: express.Request, res: express.Response, _next: expr
     },
   })
 })
+
+export default app
