@@ -1,4 +1,5 @@
 import type { TransactionType } from './transactionsStore.js'
+import { readJsonFile, writeJsonFile } from '../utils/fileStore.js'
 
 export type CategoryRecord = {
   id: string
@@ -7,7 +8,7 @@ export type CategoryRecord = {
   color: string
 }
 
-export const categoriesStore: CategoryRecord[] = [
+const DEFAULT_CATEGORIES: CategoryRecord[] = [
   { id: 'cat_salary', name: 'Sueldo', type: 'income', color: '#22c55e' },
   { id: 'cat_freelance', name: 'Freelance', type: 'income', color: '#16a34a' },
   { id: 'cat_other_income', name: 'Otros ingresos', type: 'income', color: '#15803d' },
@@ -21,3 +22,5 @@ export const categoriesStore: CategoryRecord[] = [
   { id: 'cat_education', name: 'Educacion', type: 'expense', color: '#14b8a6' },
   { id: 'cat_other', name: 'Otros', type: 'expense', color: '#71717a' },
 ]
+
+export const categoriesStore: CategoryRecord[] = readJsonFile('categories.json', DEFAULT_CATEGORIES)
