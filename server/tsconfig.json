@@ -4,7 +4,7 @@
     "lib": ["ES2022"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "types": ["node"],
     "strict": true,
@@ -13,6 +13,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "api/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

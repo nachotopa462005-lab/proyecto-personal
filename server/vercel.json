@@ -1,4 +1,6 @@
 {
+  "buildCommand": "tsc",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
